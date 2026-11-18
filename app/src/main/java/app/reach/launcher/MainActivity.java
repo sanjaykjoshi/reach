@@ -100,6 +100,60 @@ public class MainActivity extends Activity {
         goEdgeToEdge();
         applyHandedness();
         loadApps();
+        if (!isDefaultHome() && !prefs.getBoolean("asked_home", false)) {
+            prefs.edit().putBoolean("asked_home", true).apply();
+            ui.postDelayed(this::requestDefaultHome, 600);
+        }
+    }
+
+    private static final int REQ_HOME = 41;
+
+    private boolean isDefaultHome() {
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                android.app.role.RoleManager rm = getSystemService(android.app.role.RoleManager.class);
+                return rm != null && rm.isRoleHeld(android.app.role.RoleManager.ROLE_HOME);
+            }
+            Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            ResolveInfo ri = getPackageManager().resolveActivity(home, PackageManager.MATCH_DEFAULT_ONLY);
+            return ri != null && ri.activityInfo != null && getPackageName().equals(ri.activityInfo.packageName);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Shows Android's own "Set Reach as your home app?" prompt, or the settings page. */
+    private void requestDefaultHome() {
+        if (isDefaultHome()) {
+            toast("Reach is already your home app");
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 29) {
+            try {
+                android.app.role.RoleManager rm = getSystemService(android.app.role.RoleManager.class);
+                if (rm != null && rm.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME)) {
+                    startActivityForResult(rm.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME), REQ_HOME);
+                    return;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        openHomeSettings();
+    }
+
+    private void openHomeSettings() {
+        toast("Choose Reach as your Home app");
+        if (!launch(new Intent(Settings.ACTION_HOME_SETTINGS))) {
+            launch(new Intent(Settings.ACTION_SETTINGS));
+        }
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        // Some phones skip the prompt silently; fall back to the settings page.
+        if (requestCode == REQ_HOME && !isDefaultHome()) openHomeSettings();
     }
 
     @Override
@@ -658,7 +712,7 @@ public class MainActivity extends Activity {
         String[] items = {
                 "Left-handed mode: " + (left ? "On" : "Off"),
                 "Hidden apps (" + hiddenCount + ")",
-                "Make Reach your home app",
+                isDefaultHome() ? "Reach is your home app \u2713" : "Make Reach your home app",
                 "Phone settings",
                 "How to use Reach",
         };
@@ -674,9 +728,7 @@ public class MainActivity extends Activity {
                             showHiddenApps();
                             break;
                         case 2:
-                            if (!launch(new Intent(Settings.ACTION_HOME_SETTINGS))) {
-                                launch(new Intent(Settings.ACTION_SETTINGS));
-                            }
+                            requestDefaultHome();
                             break;
                         case 3:
                             launch(new Intent(Settings.ACTION_SETTINGS));
