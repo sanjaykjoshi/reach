@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'app.reach.launcher'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'app.reach.launcher'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // A fixed key so every new build installs as an update over the last one.
+    signingConfigs {
+        shared {
+            storeFile file('reach.keystore')
+            storePassword 'reachlauncher'
+            keyAlias 'reach'
+            keyPassword 'reachlauncher'
+        }
+    }
+
+    buildTypes {
+        debug { signingConfig signingConfigs.shared }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.shared
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
