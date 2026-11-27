@@ -468,14 +468,21 @@ public class MainActivity extends Activity {
                     if (getPackageName().equals(ri.activityInfo.packageName)) continue;
                     ComponentName cn = new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name);
                     String key = cn.flattenToString();
-                    Drawable icon = iconCache.get(key);
+                    // Include the app's last update time so updated apps get their new icon.
+                    long updated = 0;
+                    try {
+                        updated = pm.getPackageInfo(ri.activityInfo.packageName, 0).lastUpdateTime;
+                    } catch (Exception ignored) {
+                    }
+                    String iconKey = key + "@" + updated;
+                    Drawable icon = iconCache.get(iconKey);
                     if (icon == null) {
                         try {
                             icon = ri.loadIcon(pm);
                         } catch (Exception e) {
                             icon = pm.getDefaultActivityIcon();
                         }
-                        iconCache.put(key, icon);
+                        iconCache.put(iconKey, icon);
                     }
                     CharSequence cs = ri.loadLabel(pm);
                     String label = cs == null ? ri.activityInfo.packageName : cs.toString().trim();
